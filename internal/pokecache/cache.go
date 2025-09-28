@@ -17,21 +17,18 @@ type Cache struct{
 }
 
 func NewCache(interval time.Duration) Cache{
-	defaultMap := make(map[string]cacheEntry{})
+	defaultMap := make(map[string]cacheEntry)
 	// mutex doesn't need instiated
 	cache := Cache{cacheEntries: defaultMap, cacheInterval: interval}
 	return cache
 }
 
-func (c Cache) Add(key string, val []byte) error{
+func (c Cache) Add(key string, val []byte){
 	c.mu.Lock()
-	if err := c.cacheEntries; err != nil{
-		return err
-	}
+	//entries, ok := c.cacheEntries
+
 	c.cacheEntries[key] = cacheEntry{createdAt: time.Now(), cacheEntryVal: val}
 	c.mu.Unlock()
-
-	return nil
 }
 
 func (c Cache) Get(key string) ([]byte, bool){
@@ -40,4 +37,16 @@ func (c Cache) Get(key string) ([]byte, bool){
 		return []byte{}, false
 	}
 	return entry.cacheEntryVal, true
+}
+
+func (c Cache) readLoop(interval time.Duration){
+	for key, value := range c.cacheEntries{
+		created := value.createdAt
+		exitTime := created.Add(interval)
+		now := time.Now()
+		comparison := now.Compare(exitTime)
+		if comparison == 0 || comparison == 1{
+			delete(c.cacheEntries, key)
+		}
+	}
 }

@@ -4,6 +4,9 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"github.com/billLee3/pokedex/internal/pokecache"
+	"time"
+	"fmt"
 )
 
 // ListLocations -
@@ -12,7 +15,9 @@ func (c *Client) ListLocations(pageURL *string) (RespShallowLocations, error) {
 	if pageURL != nil {
 		url = *pageURL
 	}
-
+	
+	pokecache := pokecache.NewCache(30 * time.Second)
+	fmt.Println("%v", pokecache)
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return RespShallowLocations{}, err
