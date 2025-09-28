@@ -1,3 +1,3 @@
-module github.com/billLee3/pokedexcli
+module github.com/billLee3/pokedex
 
 go 1.25.1

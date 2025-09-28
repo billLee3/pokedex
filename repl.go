@@ -5,13 +5,13 @@ import (
 	"fmt"
 	"os"
 	"strings"
-	"github.com/pokedex/internal/pokeapi"
+	"github.com/billLee3/pokedex/internal/pokeapi"
 )
 
 type config struct {
 	pokeapiClient pokeapi.Client
-	nextLocationURL *string
-	prevLocationURL *string
+	nextLocationsURL *string
+	prevLocationsURL *string
 }
 
 func startRepl(cfg *config) {
