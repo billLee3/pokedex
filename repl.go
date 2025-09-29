@@ -5,13 +5,17 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
+
 	"github.com/billLee3/pokedex/internal/pokeapi"
+	"github.com/billLee3/pokedex/internal/pokecache"
 )
 
 type config struct {
-	pokeapiClient pokeapi.Client
+	pokeapiClient    pokeapi.Client
 	nextLocationsURL *string
 	prevLocationsURL *string
+	pokecache        pokecache.Cache
 }
 
 func startRepl(cfg *config) {
@@ -33,11 +37,13 @@ func startRepl(cfg *config) {
 			if err != nil {
 				fmt.Println(err)
 			}
+			cfg.pokecache.ReadLoop(30 * time.Second)
 			continue
 		} else {
 			fmt.Println("Unknown command")
 			continue
 		}
+
 	}
 }
 
@@ -66,14 +72,14 @@ func getCommands() map[string]cliCommand {
 			callback:    commandExit,
 		},
 		"map": {
-			name: 		 "map",
+			name:        "map",
 			description: "Get the next page of locations",
 			callback:    commandMapf,
 		},
 		"mapb": {
 			name:        "mapb",
 			description: "Get previous page of locations",
-			callback: commandMapb,
+			callback:    commandMapb,
 		},
 	}
 }

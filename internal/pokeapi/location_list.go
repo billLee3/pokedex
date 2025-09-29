@@ -2,11 +2,12 @@ package pokeapi
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
-	"github.com/billLee3/pokedex/internal/pokecache"
 	"time"
-	"fmt"
+
+	"github.com/billLee3/pokedex/internal/pokecache"
 )
 
 // ListLocations -
@@ -15,9 +16,19 @@ func (c *Client) ListLocations(pageURL *string) (RespShallowLocations, error) {
 	if pageURL != nil {
 		url = *pageURL
 	}
-	
+
 	pokecache := pokecache.NewCache(30 * time.Second)
-	fmt.Println("%v", pokecache)
+	_, ok := pokecache.CacheEntries[url]
+	if ok {
+		responseCache, _ := pokecache.Get(url)
+		var response RespShallowLocations
+		err := json.Unmarshal(responseCache, &response)
+		if err != nil {
+			return RespShallowLocations{}, err
+		}
+		return response, nil
+	}
+	fmt.Printf("%v", pokecache)
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return RespShallowLocations{}, err

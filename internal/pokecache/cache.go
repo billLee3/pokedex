@@ -5,48 +5,51 @@ import (
 	"time"
 )
 
-type cacheEntry struct{
-	createdAt time.Time
-	cacheEntryVal []byte
+type cacheEntry struct {
+	CreatedAt     time.Time
+	CacheEntryVal []byte
 }
 
-type Cache struct{
-	cacheEntries map[string]cacheEntry
-	cacheInterval time.Duration
-	mu sync.Mutex
+type Cache struct {
+	CacheEntries  map[string]cacheEntry
+	CacheInterval time.Duration
+	mu            sync.Mutex
 }
 
-func NewCache(interval time.Duration) Cache{
+func NewCache(interval time.Duration) *Cache {
 	defaultMap := make(map[string]cacheEntry)
 	// mutex doesn't need instiated
-	cache := Cache{cacheEntries: defaultMap, cacheInterval: interval}
-	return cache
+	cache := Cache{CacheEntries: defaultMap, CacheInterval: interval}
+	return &cache
 }
 
-func (c Cache) Add(key string, val []byte){
+func (c *Cache) Add(key string, val []byte) {
 	c.mu.Lock()
-	//entries, ok := c.cacheEntries
+	//entries, ok := c.CacheEntries
 
-	c.cacheEntries[key] = cacheEntry{createdAt: time.Now(), cacheEntryVal: val}
+	c.CacheEntries[key] = cacheEntry{CreatedAt: time.Now(), CacheEntryVal: val}
 	c.mu.Unlock()
 }
 
-func (c Cache) Get(key string) ([]byte, bool){
-	entry, ok := c.cacheEntries[key]
-	if !ok{
+func (c *Cache) Get(key string) ([]byte, bool) {
+	entry, ok := c.CacheEntries[key]
+	if !ok {
 		return []byte{}, false
 	}
-	return entry.cacheEntryVal, true
+	return entry.CacheEntryVal, true
 }
 
-func (c Cache) readLoop(interval time.Duration){
-	for key, value := range c.cacheEntries{
-		created := value.createdAt
+func (c *Cache) ReadLoop(interval time.Duration) {
+	c.mu.Lock()
+	for key, value := range c.CacheEntries {
+		c.mu.Lock()
+		created := value.CreatedAt
 		exitTime := created.Add(interval)
 		now := time.Now()
 		comparison := now.Compare(exitTime)
-		if comparison == 0 || comparison == 1{
-			delete(c.cacheEntries, key)
+		if comparison == 0 || comparison == 1 {
+			delete(c.CacheEntries, key)
 		}
 	}
+	c.mu.Unlock()
 }
