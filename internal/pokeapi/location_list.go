@@ -2,12 +2,8 @@ package pokeapi
 
 import (
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
-	"time"
-
-	"github.com/billLee3/pokedex/internal/pokecache"
 )
 
 // ListLocations -
@@ -17,18 +13,16 @@ func (c *Client) ListLocations(pageURL *string) (RespShallowLocations, error) {
 		url = *pageURL
 	}
 
-	pokecache := pokecache.NewCache(30 * time.Second)
-	_, ok := pokecache.CacheEntries[url]
-	if ok {
-		responseCache, _ := pokecache.Get(url)
-		var response RespShallowLocations
-		err := json.Unmarshal(responseCache, &response)
+	if val, ok := c.cache.Get(url); ok {
+		locationsResp := RespShallowLocations{}
+		err := json.Unmarshal(val, &locationsResp)
 		if err != nil {
 			return RespShallowLocations{}, err
 		}
-		return response, nil
+
+		return locationsResp, nil
 	}
-	fmt.Printf("%v", pokecache)
+
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return RespShallowLocations{}, err
@@ -51,5 +45,84 @@ func (c *Client) ListLocations(pageURL *string) (RespShallowLocations, error) {
 		return RespShallowLocations{}, err
 	}
 
+	c.cache.Add(url, dat)
 	return locationsResp, nil
+}
+
+func (c *Client) GetLocationArea(locationAreaName string) (LocationArea, error) {
+	url := baseURL + "/location-area/" + locationAreaName
+
+	if val, ok := c.cache.Get(url); ok {
+		locationArea := LocationArea{}
+		err := json.Unmarshal(val, &locationArea)
+		if err != nil {
+			return LocationArea{}, err
+		}
+
+		return locationArea, nil
+	}
+
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return LocationArea{}, err
+	}
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return LocationArea{}, err
+	}
+	defer resp.Body.Close()
+
+	dat, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return LocationArea{}, err
+	}
+
+	locationArea := LocationArea{}
+	err = json.Unmarshal(dat, &locationArea)
+	if err != nil {
+		return LocationArea{}, err
+	}
+
+	c.cache.Add(url, dat)
+	return locationArea, nil
+}
+
+func (c *Client) GetPokemon(pokemonName string) (Pokemon, error) {
+	url := baseURL + "/pokemon/" + pokemonName
+
+	if val, ok := c.cache.Get(url); ok {
+		pokemon := Pokemon{}
+		err := json.Unmarshal(val, &pokemon)
+		if err != nil {
+			return Pokemon{}, err
+		}
+
+		return pokemon, nil
+	}
+
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return Pokemon{}, err
+	}
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return Pokemon{}, err
+	}
+	defer resp.Body.Close()
+
+	dat, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return Pokemon{}, err
+	}
+
+	pokemon := Pokemon{}
+	err = json.Unmarshal(dat, &pokemon)
+	if err != nil {
+		return Pokemon{}, err
+	}
+
+	c.cache.Add(url, dat)
+	return pokemon, nil
 }

@@ -5,17 +5,15 @@ import (
 	"fmt"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/billLee3/pokedex/internal/pokeapi"
-	"github.com/billLee3/pokedex/internal/pokecache"
 )
 
 type config struct {
 	pokeapiClient    pokeapi.Client
 	nextLocationsURL *string
 	prevLocationsURL *string
-	pokecache        pokecache.Cache
+	caughtPokemon    map[string]pokeapi.Pokemon
 }
 
 func startRepl(cfg *config) {
@@ -30,20 +28,22 @@ func startRepl(cfg *config) {
 		}
 
 		commandName := words[0]
+		args := []string{}
+		if len(words) > 1 {
+			args = words[1:]
+		}
 
 		command, exists := getCommands()[commandName]
 		if exists {
-			err := command.callback(cfg)
+			err := command.callback(cfg, args...)
 			if err != nil {
 				fmt.Println(err)
 			}
-			cfg.pokecache.ReadLoop(30 * time.Second)
 			continue
 		} else {
 			fmt.Println("Unknown command")
 			continue
 		}
-
 	}
 }
 
@@ -56,7 +56,7 @@ func cleanInput(text string) []string {
 type cliCommand struct {
 	name        string
 	description string
-	callback    func(*config) error
+	callback    func(*config, ...string) error
 }
 
 func getCommands() map[string]cliCommand {
@@ -66,11 +66,6 @@ func getCommands() map[string]cliCommand {
 			description: "Displays a help message",
 			callback:    commandHelp,
 		},
-		"exit": {
-			name:        "exit",
-			description: "Exit the Pokedex",
-			callback:    commandExit,
-		},
 		"map": {
 			name:        "map",
 			description: "Get the next page of locations",
@@ -78,8 +73,33 @@ func getCommands() map[string]cliCommand {
 		},
 		"mapb": {
 			name:        "mapb",
-			description: "Get previous page of locations",
+			description: "Get the previous page of locations",
 			callback:    commandMapb,
+		},
+		"exit": {
+			name:        "exit",
+			description: "Exit the Pokedex",
+			callback:    commandExit,
+		},
+		"explore": {
+			name:        "explore {location name}",
+			description: "Explore the pokemon in a given area",
+			callback:    commandExplore,
+		},
+		"catch": {
+			name:        "catch {pokemon name}",
+			description: "Catch the pokemon",
+			callback:    commandCatch,
+		},
+		"inspect": {
+			name:        "inspect {pokemon name}",
+			description: "View information on caught pokemon",
+			callback:    commandInspect,
+		},
+		"pokedex": {
+			name:        "pokedex",
+			description: "Shows the pokemon you've caught",
+			callback:    commandPokedex,
 		},
 	}
 }

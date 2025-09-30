@@ -5,51 +5,60 @@ import (
 	"time"
 )
 
-type cacheEntry struct {
-	CreatedAt     time.Time
-	CacheEntryVal []byte
-}
-
+// Cache -
 type Cache struct {
-	CacheEntries  map[string]cacheEntry
-	CacheInterval time.Duration
-	mu            sync.Mutex
+	cache map[string]cacheEntry
+	mux   *sync.Mutex
 }
 
-func NewCache(interval time.Duration) *Cache {
-	defaultMap := make(map[string]cacheEntry)
-	// mutex doesn't need instiated
-	cache := Cache{CacheEntries: defaultMap, CacheInterval: interval}
-	return &cache
+type cacheEntry struct {
+	createdAt time.Time
+	val       []byte
 }
 
-func (c *Cache) Add(key string, val []byte) {
-	c.mu.Lock()
-	//entries, ok := c.CacheEntries
-
-	c.CacheEntries[key] = cacheEntry{CreatedAt: time.Now(), CacheEntryVal: val}
-	c.mu.Unlock()
-}
-
-func (c *Cache) Get(key string) ([]byte, bool) {
-	entry, ok := c.CacheEntries[key]
-	if !ok {
-		return []byte{}, false
+// NewCache -
+func NewCache(interval time.Duration) Cache {
+	c := Cache{
+		cache: make(map[string]cacheEntry),
+		mux:   &sync.Mutex{},
 	}
-	return entry.CacheEntryVal, true
+
+	go c.reapLoop(interval)
+
+	return c
 }
 
-func (c *Cache) ReadLoop(interval time.Duration) {
-	c.mu.Lock()
-	for key, value := range c.CacheEntries {
-		c.mu.Lock()
-		created := value.CreatedAt
-		exitTime := created.Add(interval)
-		now := time.Now()
-		comparison := now.Compare(exitTime)
-		if comparison == 0 || comparison == 1 {
-			delete(c.CacheEntries, key)
+// Add -
+func (c *Cache) Add(key string, value []byte) {
+	c.mux.Lock()
+	defer c.mux.Unlock()
+	c.cache[key] = cacheEntry{
+		createdAt: time.Now().UTC(),
+		val:       value,
+	}
+}
+
+// Get -
+func (c *Cache) Get(key string) ([]byte, bool) {
+	c.mux.Lock()
+	defer c.mux.Unlock()
+	val, ok := c.cache[key]
+	return val.val, ok
+}
+
+func (c *Cache) reapLoop(interval time.Duration) {
+	ticker := time.NewTicker(interval)
+	for range ticker.C {
+		c.reap(time.Now().UTC(), interval)
+	}
+}
+
+func (c *Cache) reap(now time.Time, last time.Duration) {
+	c.mux.Lock()
+	defer c.mux.Unlock()
+	for k, v := range c.cache {
+		if v.createdAt.Before(now.Add(-last)) {
+			delete(c.cache, k)
 		}
 	}
-	c.mu.Unlock()
 }
